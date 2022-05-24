@@ -27,39 +27,32 @@ export const VeramoWeb3Provider = ({ children }: { children: JSX.Element | JSX.E
   const coinbaseProvider = coinbaseHooks.useProvider()
 
   useEffect(() => {
-      const connectors = []
-
-      if (metaMaskIsActive) {
-        connectors.push({
+      const connectors = [
+        {
           chainId: metaMaskChainId,
           accounts: metaMaskAccounts,
           provider: metaMaskProvider,
+          isActive: metaMaskIsActive,
           name: 'metaMask'
-        })
-      }
-
-      if (walletConnectIsActive) {
-        connectors.push({
+        },
+        {
           chainId:  walletConnectChainId,
           accounts: walletConnectAccounts,
           provider: walletConnectProvider,
+          isActive: walletConnectIsActive,
           name: 'walletConnect'
-        })
-      }
-      if (coinbaseIsActive) {
-        connectors.push({
+        },
+        {
           chainId:  coinbaseChainId,
           accounts: coinbaseAccounts,
           provider: coinbaseProvider,
+          isActive: coinbaseIsActive,
           name: 'coinbase'
-        })
-      }
+        }
+      ]
 
-      if (connectors.length > 0) {
-
-        void createWeb3Agent({ connectors })
+      void createWeb3Agent({ connectors })
         .then(setWeb3Agent)
-      }
 
       return () => {
         setWeb3Agent(undefined)

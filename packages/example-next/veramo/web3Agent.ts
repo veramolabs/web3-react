@@ -33,8 +33,9 @@ const infuraProjectId = '3586660d179141e3801c3895de1c2eba'
 interface ConnectorInfo {
   provider: Web3Provider,
   chainId: number,
-  accounts: string[],
+  accounts?: string[],
   name: string,
+  isActive: boolean,
 }
 
 export async function createWeb3Agent({
@@ -42,8 +43,6 @@ export async function createWeb3Agent({
 }: {
   connectors: ConnectorInfo[]
 }) {
-
-
 
   const didProviders: Record<string, AbstractIdentifierProvider> = {}
   const web3Providers: Record<string, Web3Provider> = {}
@@ -96,30 +95,39 @@ export async function createWeb3Agent({
     ],
   })
 
+  const identifiers = await agent.didManagerFind()
+  for (const identifier of identifiers) {
+    if (identifier.keys.filter((key) => key.kms !== 'web3').length === 0) {
+      await agent.didManagerDelete({ did: identifier.did })
+    }
+  }
+
   for (const info of connectors) {
-    for (const account of info.accounts) {
-      const did = `did:ethr:${info.chainId}:${account}`
-      const controllerKeyId = `${did}#controller`
-      await agent.didManagerImport({
-        did,
-        provider: info.name,
-        controllerKeyId,
-        keys: [{
-          kid: controllerKeyId,
-          type: 'Secp256k1',
-          kms: 'web3',
-          privateKeyHex: '',
-          meta: {
-            provider: info.name,
-            account,
-            algorithms: [
-              'eth_signMessage',
-              'eth_signTypedData',
-              'eth_signTransaction'
-            ]
-          },
-        } as MinimalImportableKey],
-      })
+    if (info.accounts) {
+      for (const account of info.accounts) {
+        const did = `did:ethr:${info.chainId}:${account}`
+        const controllerKeyId = `${did}#controller`
+        await agent.didManagerImport({
+          did,
+          provider: info.name,
+          controllerKeyId,
+          keys: [{
+            kid: controllerKeyId,
+            type: 'Secp256k1',
+            kms: 'web3',
+            privateKeyHex: '',
+            meta: {
+              provider: info.name,
+              account,
+              algorithms: [
+                'eth_signMessage',
+                'eth_signTypedData',
+                'eth_sendTransaction',
+              ]
+            },
+          } as MinimalImportableKey],
+        })
+      }
     }
   }
 
