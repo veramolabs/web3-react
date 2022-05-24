@@ -35,7 +35,6 @@
     "ethr-did-resolver": "^5.0.4",
     "next": "^12.1.5",
     "react-dom": "^18.0.0",
-    "react-query": "^3.39.0",
     "web-did-resolver": "^2.0.16"
   }
 }

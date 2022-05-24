@@ -1,12 +1,17 @@
 import { useVeramo } from "@veramo-community/veramo-react"
-import { IDIDManager, IKeyManager } from "@veramo/core"
-import { useQuery } from 'react-query'
+import { IDIDManager, IIdentifier, IKeyManager } from "@veramo/core"
+import { useEffect, useState } from "react"
 
 export default function Identifiers() {
   const { agent } = useVeramo<IDIDManager>()
-  const { data: identifiers } = useQuery(['identifiers'], () =>
-  agent?.didManagerFind(),
-)
+  const [identifiers, setIdentifiers] = useState<IIdentifier[]>([])
+  
+  useEffect(()=> {
+    agent?.didManagerFind()
+    .then(setIdentifiers)
+    .catch(console.log)
+  }, [ agent ])
+
   return <div>
     <h3>Identifiers</h3>
     {identifiers?.map(identifier => <Identifier key={identifier.did} did={identifier.did}/>)}
