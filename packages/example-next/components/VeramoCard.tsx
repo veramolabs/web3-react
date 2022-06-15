@@ -49,7 +49,7 @@ export default function VeramoCard() {
     setVc(vc)
   }
 
-  return <Card>
+  return <div>
     <b>Veramo</b>
     <div>
       <select multiple onChange={(e)=>setSelectedDid(e.target.value)}>
@@ -63,5 +63,5 @@ export default function VeramoCard() {
     <div>
       {vc && <pre>{JSON.stringify(vc, null, 2)}</pre>}
     </div>
-  </Card>
+  </div>
 }
