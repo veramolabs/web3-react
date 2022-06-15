@@ -6,20 +6,22 @@
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 import { createAgent, IDIDManager, IKeyManager, IResolver } from '@veramo/core'
 import { CredentialIssuer, W3cMessageHandler } from '@veramo/credential-w3c'
+import { CredentialIssuerEIP712, ICredentialIssuerEIP712 } from '@veramo/credential-eip712'
 import { AbstractIdentifierProvider, DIDManager } from '@veramo/did-manager'
 import { DIDResolverPlugin } from '@veramo/did-resolver'
 import { KeyManager } from '@veramo/key-manager'
 import { SdrMessageHandler } from '@veramo/selective-disclosure'
 import { JwtMessageHandler } from '@veramo/did-jwt'
 import { MessageHandler } from '@veramo/message-handler'
-import { Web3KeyManagementSystem } from './KeyManagementSystem'
+import { Web3KeyManagementSystem } from '@veramo/kms-web3'
+
 import {
   DataStoreJson,
   DIDStoreJson,
   KeyStoreJson,
+  BrowserLocalStorageStore
 } from '@veramo/data-store-json'
-import { LocalStorageStore } from './localStorageStore'
-// import { NFTResolver } from './NFTResolver'
+
 import { Resolver } from 'did-resolver'
 import { getResolver as ethrDidResolver } from 'ethr-did-resolver'
 import { getResolver as webDidResolver } from 'web-did-resolver'
@@ -27,7 +29,7 @@ import { EthrDIDProvider } from '@veramo/did-provider-ethr'
 import { MinimalImportableKey } from '@veramo/core'
 import { Web3Provider } from '@ethersproject/providers'
 
-const dataStore = LocalStorageStore.fromLocalStorage('veramo-state')
+const dataStore = BrowserLocalStorageStore.fromLocalStorage('veramo-state')
 const infuraProjectId = '3586660d179141e3801c3895de1c2eba'
 
 interface ConnectorInfo {
@@ -57,7 +59,7 @@ export async function createWeb3Agent({
   })
 
   const id = 'web3Agent'
-  const agent = createAgent<IDIDManager & IKeyManager & IResolver>({
+  const agent = createAgent<IDIDManager & IKeyManager & IResolver & ICredentialIssuerEIP712>({
     context: {
       id,
       name: `Web3`,
@@ -66,7 +68,6 @@ export async function createWeb3Agent({
       new DIDResolverPlugin({
         resolver: new Resolver({
           ethr: ethrDidResolver({
-            // provider: web3Provider,
             infuraProjectId
           }).ethr,
           web: webDidResolver().web,
@@ -75,7 +76,7 @@ export async function createWeb3Agent({
       new KeyManager({
         store: new KeyStoreJson(dataStore),
         kms: {
-          web3: new Web3KeyManagementSystem(web3Providers, new KeyStoreJson(dataStore)),
+          web3: new Web3KeyManagementSystem(web3Providers),
         },
       }),
       new DIDManager({
@@ -84,6 +85,7 @@ export async function createWeb3Agent({
         providers: didProviders,
       }),
       new CredentialIssuer(),
+      new CredentialIssuerEIP712(),
       new DataStoreJson(dataStore),
       new MessageHandler({
         messageHandlers: [
@@ -95,6 +97,8 @@ export async function createWeb3Agent({
     ],
   })
 
+  // This logic will be moved to a separate veramo plugin,
+  // and will be executed automatically
   const identifiers = await agent.didManagerFind()
   for (const identifier of identifiers) {
     if (identifier.keys.filter((key) => key.kms !== 'web3').length === 0) {
@@ -105,8 +109,9 @@ export async function createWeb3Agent({
   for (const info of connectors) {
     if (info.accounts) {
       for (const account of info.accounts) {
-        const did = `did:ethr:${info.chainId}:${account}`
-        const controllerKeyId = `${did}#controller`
+        const did = `did:ethr:0x${info.chainId.toString(16)}:${account}`
+        // const controllerKeyId = `${did}#controller`
+        const controllerKeyId = `${info.name}-${account}`
         await agent.didManagerImport({
           did,
           provider: info.name,
@@ -118,11 +123,10 @@ export async function createWeb3Agent({
             privateKeyHex: '',
             meta: {
               provider: info.name,
-              account,
+              account: account.toLocaleLowerCase(),
               algorithms: [
                 'eth_signMessage',
                 'eth_signTypedData',
-                'eth_sendTransaction',
               ]
             },
           } as MinimalImportableKey],
